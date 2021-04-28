@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 회원정보 처리 SQL -->
+<mapper namespace="global.sesoc.memo.dao.RoomMapper">
+
+	<resultMap type="hashmap" id="totalMap">
+		<id property="roomNum" column="roomNum" />
+		<result property="roomName" column="roomName" />
+		<collection property="reservationList" javaType="java.util.ArrayList" resultMap="reservationMap" />
+	</resultMap>
+	<resultMap type="hashmap" id="reservationMap">
+		<id property="reservationNum" column="reservationNum" />
+		<result property="title" column="title" />
+		<result property="startTime" column="startTime" />
+		<result property="endTime" column="endTime" />
+	</resultMap>
+
+	<select id="selectRoomList" resultMap="totalMap">
+		select
+			rm.num as roomNum
+			,rm.name as roomName
+			,rs.num as reservationNum
+			,rs.title as title
+			,to_char(rs.startTime, 'yyyy-MM-dd hh24:mi:ss') as startTime
+			,to_char(rs.endTime, 'yyyy-MM-dd hh24:mi:ss') as endTime
+		from
+			rooms rm , reservations rs
+		where
+			rm.num = rs.roomNum(+)
+		order by
+			rm.num
+	</select>
+	
+	<select id="selectRoomOne" parameterType="int" resultType="room">
+		select
+			num
+			,name
+		from
+			rooms
+		where
+			num = #{num}
+	</select>
+	
+	<insert id="insertReservation" parameterType="reservation">
+		<selectKey keyProperty="num" resultType="int" order="BEFORE">
+			select
+				seq_reservations.nextval
+			from
+				dual
+		</selectKey>
+		insert into
+			reservations(
+				num
+				,startTime
+				,endTime
+				,title
+				,memberId
+				,roomNum
+			)values(
+				#{num}
+				,#{startTime}
+				,#{endTime}
+				,#{title}
+				,#{memberId}
+				,#{roomNum}
+			)
+	</insert>
+	
+	<insert id="groupInsert" parameterType="hashmap">
+		insert into
+			member_groups(
+				num
+				,reservationNum
+				,memberId
+			)
+			select
+				seq_member_groups.nextval
+				, A.* from (
+		<foreach collection="entry" item="arr" separator="UNION ALL ">
+			select
+				#{reservationNum} as reservationNum
+				,#{arr} as memberId
+			from
+				dual			
+		</foreach>
+			) A
+	</insert>
+	
+	<delete id="deleteReservation" parameterType="int">
+		delete from
+			reservations
+		where
+			num = #{num}
+	</delete>
+	
+	<select id="selectMyReservaion" parameterType="string" resultType="hashmap">
+		select
+			rm.num as roomNum
+			,rm.name as roomName
+			,rs.num as reservationNum
+			,rs.title as title
+			,to_char(rs.startTime, 'yyyy-MM-dd hh24:mi:ss') as startTime
+			,to_char(rs.endTime, 'yyyy-MM-dd hh24:mi:ss') as endTime
+			,mg.num as myReservationNum
+		from
+			rooms rm , reservations rs , member_groups mg
+		where
+			rm.num = rs.roomNum
+		and
+			rs.num = mg.reservationNum
+		and
+			mg.memberId = #{id}
+		order by
+			rm.name
+	</select>
+	
+	<delete id="deleteMyReservation" parameterType="memberGroup">
+		delete from
+			member_groups
+		where
+			num = #{num}
+		and
+			memberId = #{memberId}
+	</delete>
+	
+</mapper>
